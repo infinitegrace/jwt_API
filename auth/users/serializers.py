@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -12,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
         
         # we overide the default create function by creating our own so that we can modify how data is stored in the db.
         def create(self, validated_data):
-            password = validated_data.pop('password')  # we extract the field with password from validated_data
+            password = validated_data.pop('password', None)  # we extract the field with password from validated_data
  
             instance = self.Meta.model(**validated_data) #Validated_data without the popped password
 

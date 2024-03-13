@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from .serializers import UserSerializer
 from .models import User
+from .models import jwt, datetime
 # Create your views here.
 
 class Registerview(APIView):
@@ -23,12 +24,50 @@ class LoginView(APIView):
         if user is None:
             raise AuthenticationFailed('User not found')
 
-        if not user.check_password(password): #this code is causing my user not to login
+        if not user.check_password(password): #this code is failing a user whwn i try to log.
             raise AuthenticationFailed('Incorrect password')
 
-        return Response({
-                'message': 'success'
-        })
-        
+        payload = {
+            'id' : user.id,
+            'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
+            'jwt' : datetime.datetime.utcnow()
+        }
 
-    
+        token = jwt.encode(payload, 'secret', algorithm='HS256')
+
+        Response = Response()
+
+        response.set_cookies(key='jwt', value=token, httponly=True)
+        Response.data = {
+            'jwt' : token
+        }
+
+        return response
+
+class UserView(APIView):
+    def get(self, request):
+        token = request.COOKIES.get('jwt')
+
+        if not token:
+            raise AuthenticationFailed('Unauthenticated')
+
+        try:
+            payload= jwt.decode(token, algorithm=['HS256'])
+
+        except:
+            raise AuthenticationFailed('Unauthenticated')
+
+        user = User.objects.filter(id=payload['id']).first()
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+class LogoutView(APIView):
+    def post(self, request):
+        response = Response()
+        response.delete_cookie('jwt')
+        request.data = {
+            'message': 'Success'
+        }
+        return response
+
+     
